@@ -141,7 +141,7 @@ export default function VoiceAssessment() {
         </div>
 
         {/* Dev Controls - Make it absolute positioned */}
-        {process.env.NODE_ENV === 'development' && (
+        {true && (
           <div className="absolute bottom-4 left-4 right-4 space-y-3 backdrop-blur-sm bg-[#2C2C2E]/50 p-4 rounded-xl border border-[#48484A] z-20">
             <p className="text-xs text-[#EBEBF599] font-medium mb-2">Dev Controls</p>
             <div className="grid grid-cols-2 gap-2">

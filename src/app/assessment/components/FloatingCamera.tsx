@@ -36,6 +36,72 @@ export function FloatingCamera() {
     error: null,
   });
 
+  // Add PiP state and detection
+  const [isPiPSupported, setIsPiPSupported] = useState(false);
+  const [isPiPActive, setIsPiPActive] = useState(false);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
+  // Check PiP support
+  useEffect(() => {
+    const video = document.createElement('video');
+    setIsPiPSupported(
+      document.pictureInPictureEnabled ||
+      // @ts-expect-error - Safari support
+      document.webkitPictureInPictureEnabled ||
+      typeof video.requestPictureInPicture === 'function'
+    );
+  }, []);
+
+  // Handle PiP mode changes
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handlePiPChange = () => {
+      setIsPiPActive(!!document.pictureInPictureElement);
+    };
+
+    video.addEventListener('enterpictureinpicture', handlePiPChange);
+    video.addEventListener('leavepictureinpicture', handlePiPChange);
+
+    return () => {
+      video.removeEventListener('enterpictureinpicture', handlePiPChange);
+      video.removeEventListener('leavepictureinpicture', handlePiPChange);
+    };
+  }, []);
+
+  // Toggle PiP mode
+  const togglePiP = async () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      } else if (document.pictureInPictureEnabled) {
+        await video.requestPictureInPicture();
+      } else if (
+        // @ts-expect-error - Safari support
+        document.webkitPictureInPictureEnabled &&
+        // @ts-expect-error - Safari support
+        typeof video.webkitSetPresentationMode === 'function'
+      ) {
+        // Safari support
+        // @ts-expect-error - Safari support
+        await video.webkitSetPresentationMode('picture-in-picture');
+      }
+    } catch (err) {
+      console.error('PiP error:', err);
+    }
+  };
+
+  // Auto-enter PiP on mobile when camera is enabled
+  useEffect(() => {
+    if (isMobile && state.isEnabled && state.hasPermission && isPiPSupported) {
+      togglePiP();
+    }
+  }, [state.isEnabled, state.hasPermission, isMobile, isPiPSupported]);
+
   // Check camera availability
   useEffect(() => {
     async function checkCamera() {
@@ -57,10 +123,11 @@ export function FloatingCamera() {
 
   // Cleanup function to stop camera and reset state
   const cleanup = () => {
+    if (document.pictureInPictureElement) {
+      document.exitPictureInPicture().catch(console.error);
+    }
     if (stream) {
-      stream.getTracks().forEach(track => {
-        track.stop();
-      });
+      stream.getTracks().forEach(track => track.stop());
       setStream(null);
     }
     setState(prev => ({
@@ -177,7 +244,14 @@ export function FloatingCamera() {
                 autoPlay
                 playsInline
                 muted
-                className={`w-full h-full object-cover transform ${state.isMinimized ? 'scale-150' : 'scale-100'}`}
+                className={`w-full h-full object-cover transform ${
+                  state.isMinimized ? 'scale-150' : 'scale-100'
+                }`}
+                onPlay={() => {
+                  if (isMobile && isPiPSupported && !isPiPActive) {
+                    togglePiP();
+                  }
+                }}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-[#1C1C1E]">
@@ -202,21 +276,25 @@ export function FloatingCamera() {
                   className="p-1.5 rounded-lg bg-[#2C2C2E]/80 hover:bg-[#48484A]/80 text-white/80 backdrop-blur-sm
                     transition-colors"
                 >
-                  <VideoCameraIcon className={`w-4 h-4 ${!state.isEnabled && 'text-[#FF453A]'}`} />
+                  <VideoCameraIcon 
+                    className={`w-4 h-4 ${!state.isEnabled && 'text-[#FF453A]'}`}
+                  />
                 </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={toggleMinimize}
-                  className="p-1.5 rounded-lg bg-[#2C2C2E]/80 hover:bg-[#48484A]/80 text-white/80 backdrop-blur-sm
-                    transition-colors"
-                >
-                  {state.isMinimized ? (
-                    <ArrowsPointingOutIcon className="w-4 h-4" />
-                  ) : (
-                    <ArrowsPointingInIcon className="w-4 h-4" />
-                  )}
-                </motion.button>
+                {!isMobile && (
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={toggleMinimize}
+                    className="p-1.5 rounded-lg bg-[#2C2C2E]/80 hover:bg-[#48484A]/80 text-white/80 backdrop-blur-sm
+                      transition-colors"
+                  >
+                    {state.isMinimized ? (
+                      <ArrowsPointingOutIcon className="w-4 h-4" />
+                    ) : (
+                      <ArrowsPointingInIcon className="w-4 h-4" />
+                    )}
+                  </motion.button>
+                )}
               </div>
             </div>
           </motion.div>
