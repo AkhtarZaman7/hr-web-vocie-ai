@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   VideoCameraIcon,
-  XMarkIcon,
   ArrowsPointingInIcon,
   ArrowsPointingOutIcon,
   CameraIcon,
@@ -17,6 +16,11 @@ interface CameraState {
   isCameraAvailable: boolean;
   hasPermission: boolean;
   error: string | null;
+}
+
+interface CameraError extends Error {
+  name: 'NotAllowedError' | 'NotFoundError' | 'NotReadableError' | 'OverconstrainedError' | 'TypeError' | string;
+  message: string;
 }
 
 export function FloatingCamera() {
@@ -73,12 +77,13 @@ export function FloatingCamera() {
           hasPermission: true,
           error: null 
         }));
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error accessing camera:', err);
+        const cameraError = err as CameraError;
         setState(prev => ({ 
           ...prev, 
           hasPermission: false,
-          error: err.name === 'NotAllowedError' 
+          error: cameraError.name === 'NotAllowedError' 
             ? 'Camera access denied. Please allow camera access.'
             : 'Unable to access camera'
         }));
