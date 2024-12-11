@@ -8,6 +8,7 @@ import {
   ExclamationTriangleIcon,
   MicrophoneIcon,
 } from '@heroicons/react/24/solid';
+import { FloatingCamera } from './components/FloatingCamera';
 
 const CircleAnimation = dynamic(
   () =>
@@ -48,6 +49,8 @@ export default function VoiceAssessment() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#1C1C1E] to-[#000000] text-white">
+      <FloatingCamera />
+      
       <div className="h-screen flex flex-col px-4 py-8">
         {/* Header - Updated colors */}
         <div className="text-center">
