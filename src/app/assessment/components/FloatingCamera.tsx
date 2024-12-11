@@ -13,188 +13,100 @@ import {
 interface CameraState {
   isMinimized: boolean;
   isEnabled: boolean;
-  isCameraAvailable: boolean;
-  hasPermission: boolean;
   error: string | null;
-}
-
-interface CameraError extends Error {
-  name: 'NotAllowedError' | 'NotFoundError' | 'NotReadableError' | 'OverconstrainedError' | 'TypeError' | string;
-  message: string;
 }
 
 export function FloatingCamera() {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [state, setState] = useState<CameraState>({
     isMinimized: true,
     isEnabled: false,
-    isCameraAvailable: false,
-    hasPermission: false,
     error: null,
   });
 
-  // Add PiP state and detection
-  const [isPiPSupported, setIsPiPSupported] = useState(false);
-  const [isPiPActive, setIsPiPActive] = useState(false);
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-
-  // Check PiP support
-  useEffect(() => {
-    const video = document.createElement('video');
-    setIsPiPSupported(
-      document.pictureInPictureEnabled ||
-      // @ts-expect-error - Safari support
-      document.webkitPictureInPictureEnabled ||
-      typeof video.requestPictureInPicture === 'function'
-    );
-  }, []);
-
-  // Handle PiP mode changes
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const handlePiPChange = () => {
-      setIsPiPActive(!!document.pictureInPictureElement);
-    };
-
-    video.addEventListener('enterpictureinpicture', handlePiPChange);
-    video.addEventListener('leavepictureinpicture', handlePiPChange);
-
-    return () => {
-      video.removeEventListener('enterpictureinpicture', handlePiPChange);
-      video.removeEventListener('leavepictureinpicture', handlePiPChange);
-    };
-  }, []);
-
-  // Toggle PiP mode
-  const togglePiP = async () => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    try {
-      if (document.pictureInPictureElement) {
-        await document.exitPictureInPicture();
-      } else if (document.pictureInPictureEnabled) {
-        await video.requestPictureInPicture();
-      } else if (
-        // @ts-expect-error - Safari support
-        document.webkitPictureInPictureEnabled &&
-        // @ts-expect-error - Safari support
-        typeof video.webkitSetPresentationMode === 'function'
-      ) {
-        // Safari support
-        // @ts-expect-error - Safari support
-        await video.webkitSetPresentationMode('picture-in-picture');
-      }
-    } catch (err) {
-      console.error('PiP error:', err);
+  const stopCamera = async () => {
+    if (stream) {
+      stream.getTracks().forEach(track => {
+        track.stop();
+      });
+      setStream(null);
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
     }
   };
 
-  // Auto-enter PiP on mobile when camera is enabled
-  useEffect(() => {
-    if (isMobile && state.isEnabled && state.hasPermission && isPiPSupported) {
-      togglePiP();
-    }
-  }, [state.isEnabled, state.hasPermission, isMobile, isPiPSupported]);
+  const startCamera = async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: 'user',
+        }
+      });
 
-  // Check camera availability
-  useEffect(() => {
-    async function checkCamera() {
-      try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const hasCamera = devices.some(device => device.kind === 'videoinput');
-        setState(prev => ({ ...prev, isCameraAvailable: hasCamera }));
-      } catch (err) {
-        console.error('Error checking camera:', err);
-        setState(prev => ({ 
-          ...prev, 
-          isCameraAvailable: false,
-          error: 'Unable to detect camera devices'
-        }));
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+        await videoRef.current.play();
       }
+      setStream(mediaStream);
+      setState(prev => ({ ...prev, error: null }));
+    } catch (err) {
+      console.error('Camera error:', err);
+      setState(prev => ({
+        ...prev,
+        error: 'Unable to access camera',
+        isEnabled: false
+      }));
     }
-    checkCamera();
-  }, []);
+  };
 
-  // Cleanup function to stop camera and reset state
-  const cleanup = () => {
-    if (document.pictureInPictureElement) {
-      document.exitPictureInPicture().catch(console.error);
-    }
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
+  const toggleCamera = async () => {
+    if (state.isEnabled) {
+      await stopCamera();
     }
     setState(prev => ({
       ...prev,
-      isEnabled: false,
-      hasPermission: false,
+      isEnabled: !prev.isEnabled,
+      error: null
     }));
   };
 
-  // Handle camera setup
+  // Handle camera state changes
   useEffect(() => {
-    async function setupCamera() {
-      if (!state.isEnabled || !state.isCameraAvailable) {
-        cleanup(); // Cleanup if camera is disabled
-        return;
-      }
+    let mounted = true;
 
-      try {
-        const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-          video: { 
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            facingMode: 'user',
-            aspectRatio: 16/9,
-          } 
-        });
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = mediaStream;
+    const handleCamera = async () => {
+      if (state.isEnabled) {
+        try {
+          await startCamera();
+        } catch{
+          if (mounted) {
+            setState(prev => ({
+              ...prev,
+              error: 'Failed to start camera',
+              isEnabled: false
+            }));
+          }
         }
-        setStream(mediaStream);
-        setState(prev => ({ 
-          ...prev, 
-          hasPermission: true,
-          error: null 
-        }));
-      } catch (err: unknown) {
-        console.error('Error accessing camera:', err);
-        const cameraError = err as CameraError;
-        setState(prev => ({ 
-          ...prev, 
-          hasPermission: false,
-          error: cameraError.name === 'NotAllowedError' 
-            ? 'Camera access denied. Please allow camera access.'
-            : 'Unable to access camera'
-        }));
+      } else {
+        await stopCamera();
       }
-    }
+    };
 
-    setupCamera();
+    handleCamera();
 
-    // Cleanup on unmount or when camera is disabled
-    return cleanup;
-  }, [state.isEnabled, state.isCameraAvailable]);
-
-  // Cleanup on component unmount
-  useEffect(() => {
-    return cleanup;
-  }, []);
-
-  const toggleCamera = () => {
-    setState(prev => ({ ...prev, isEnabled: !prev.isEnabled }));
-  };
+    return () => {
+      mounted = false;
+      stopCamera();
+    };
+  }, [state.isEnabled]);
 
   const toggleMinimize = () => {
     setState(prev => ({ ...prev, isMinimized: !prev.isMinimized }));
-    // Reset position when minimizing
     setPosition({ x: 0, y: 0 });
   };
 
@@ -202,7 +114,6 @@ export function FloatingCamera() {
     <AnimatePresence mode="wait">
       <motion.div
         key="camera-container"
-        ref={containerRef}
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ 
           opacity: 1, 
@@ -238,7 +149,7 @@ export function FloatingCamera() {
               transition-[width,height] duration-300
             `}
           >
-            {state.isEnabled && state.hasPermission ? (
+            {state.isEnabled ? (
               <video
                 ref={videoRef}
                 autoPlay
@@ -247,11 +158,6 @@ export function FloatingCamera() {
                 className={`w-full h-full object-cover transform ${
                   state.isMinimized ? 'scale-150' : 'scale-100'
                 }`}
-                onPlay={() => {
-                  if (isMobile && isPiPSupported && !isPiPActive) {
-                    togglePiP();
-                  }
-                }}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-[#1C1C1E]">
@@ -280,21 +186,19 @@ export function FloatingCamera() {
                     className={`w-4 h-4 ${!state.isEnabled && 'text-[#FF453A]'}`}
                   />
                 </motion.button>
-                {!isMobile && (
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={toggleMinimize}
-                    className="p-1.5 rounded-lg bg-[#2C2C2E]/80 hover:bg-[#48484A]/80 text-white/80 backdrop-blur-sm
-                      transition-colors"
-                  >
-                    {state.isMinimized ? (
-                      <ArrowsPointingOutIcon className="w-4 h-4" />
-                    ) : (
-                      <ArrowsPointingInIcon className="w-4 h-4" />
-                    )}
-                  </motion.button>
-                )}
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={toggleMinimize}
+                  className="p-1.5 rounded-lg bg-[#2C2C2E]/80 hover:bg-[#48484A]/80 text-white/80 backdrop-blur-sm
+                    transition-colors"
+                >
+                  {state.isMinimized ? (
+                    <ArrowsPointingOutIcon className="w-4 h-4" />
+                  ) : (
+                    <ArrowsPointingInIcon className="w-4 h-4" />
+                  )}
+                </motion.button>
               </div>
             </div>
           </motion.div>
