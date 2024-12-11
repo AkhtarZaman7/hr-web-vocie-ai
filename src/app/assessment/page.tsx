@@ -60,14 +60,14 @@ export default function VoiceAssessment() {
         </div>
 
         {/* Interview Info - Mobile optimized */}
-        <div className="flex justify-center gap-3 text-xs text-gray-500 mt-4">
+        {/* <div className="flex justify-center gap-3 text-xs text-gray-500 mt-4">
           <span className="flex items-center gap-1">
             <MicrophoneIcon className="w-3 h-3" />
             Speak naturally
           </span>
           <span className="w-1 h-1 rounded-full bg-gray-700" />
           <span>15-20 min</span>
-        </div>
+        </div> */}
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col items-center justify-center -mt-12">
