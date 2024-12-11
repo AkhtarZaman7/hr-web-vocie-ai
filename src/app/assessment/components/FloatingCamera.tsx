@@ -25,10 +25,12 @@ interface CameraError extends Error {
 
 export function FloatingCamera() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
   const [state, setState] = useState<CameraState>({
-    isMinimized: false,
-    isEnabled: true,
+    isMinimized: true,
+    isEnabled: false,
     isCameraAvailable: false,
     hasPermission: false,
     error: null,
@@ -112,22 +114,48 @@ export function FloatingCamera() {
 
   const toggleMinimize = () => {
     setState(prev => ({ ...prev, isMinimized: !prev.isMinimized }));
+    // Reset position when minimizing
+    setPosition({ x: 0, y: 0 });
   };
 
   return (
     <AnimatePresence>
       <motion.div
+        ref={containerRef}
         initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
+        animate={{ 
+          opacity: 1, 
+          scale: 1,
+          x: position.x,
+          y: position.y,
+        }}
         exit={{ opacity: 0, scale: 0.8 }}
         transition={{ duration: 0.3 }}
-        className={`fixed ${state.isMinimized ? 'bottom-4 right-4' : 'top-4 right-4'} z-50`}
+        className={`fixed touch-none select-none ${
+          state.isMinimized 
+            ? 'bottom-24 right-4 sm:bottom-8'
+            : 'top-4 right-4'
+        } z-[100]`}
+        drag
+        dragMomentum={false}
+        dragTransition={{ bounceStiffness: 600, bounceDamping: 20 }}
+        dragElastic={0.2}
+        whileDrag={{ scale: 1.02 }}
+        onDragEnd={(event, info) => {
+          setPosition({ x: position.x + info.offset.x, y: position.y + info.offset.y });
+        }}
+        layout
       >
-        <div className="relative group">
+        <div className="relative group cursor-move">
           <motion.div
             layout
-            className={`overflow-hidden rounded-xl bg-[#2C2C2E] border border-[#48484A] shadow-lg
-              ${state.isMinimized ? 'w-20 h-20' : 'w-80 h-[180px]'}`}
+            className={`overflow-hidden rounded-xl bg-[#2C2C2E] border border-[#48484A] shadow-xl
+              ${state.isMinimized 
+                ? 'w-16 h-16 sm:w-20 sm:h-20'
+                : 'w-64 h-[144px] sm:w-80 sm:h-[180px]'
+              }
+              transition-[width,height] duration-300
+            `}
           >
             {state.isEnabled && state.hasPermission ? (
               <video

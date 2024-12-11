@@ -48,32 +48,23 @@ export default function VoiceAssessment() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#1C1C1E] to-[#000000] text-white">
-      <FloatingCamera />
-      
-      <div className="h-screen flex flex-col px-4 py-8">
-        {/* Header - Updated colors */}
-        <div className="text-center">
-          <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#A855F7] to-[#4ADE80]">
-            Hirewise Interview
-          </h1>
-          <p className="mt-2 text-sm text-[#EBEBF599] px-6">
-            Experience a professional interview with our intelligent assessment system
-          </p>
+    <div className="h-full overflow-hidden">
+      <div className="h-full flex flex-col px-4 py-8 relative">
+        {/* Main content */}
+        <div className="relative z-10">
+          {/* Header */}
+          <div className="text-center">
+            <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#A855F7] to-[#4ADE80]">
+              Hirewise Interview
+            </h1>
+            <p className="mt-2 text-sm text-[#EBEBF599] px-6">
+              Experience a professional interview with our intelligent assessment system
+            </p>
+          </div>
         </div>
 
-        {/* Interview Info - Mobile optimized */}
-        {/* <div className="flex justify-center gap-3 text-xs text-gray-500 mt-4">
-          <span className="flex items-center gap-1">
-            <MicrophoneIcon className="w-3 h-3" />
-            Speak naturally
-          </span>
-          <span className="w-1 h-1 rounded-full bg-gray-700" />
-          <span>15-20 min</span>
-        </div> */}
-
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col items-center justify-center -mt-12">
+        <div className="flex-1 flex flex-col items-center justify-center -mt-12 relative z-10">
           {/* Status Badge - Updated colors */}
           <div className="mb-8">
             <motion.div
@@ -149,9 +140,9 @@ export default function VoiceAssessment() {
 
         </div>
 
-        {/* Dev Controls - Updated colors */}
-        {true && (
-          <div className="space-y-3 backdrop-blur-sm bg-[#2C2C2E]/50 p-4 rounded-xl border border-[#48484A] mx-2 mt-auto">
+        {/* Dev Controls - Make it absolute positioned */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="absolute bottom-4 left-4 right-4 space-y-3 backdrop-blur-sm bg-[#2C2C2E]/50 p-4 rounded-xl border border-[#48484A] z-20">
             <p className="text-xs text-[#EBEBF599] font-medium mb-2">Dev Controls</p>
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -194,6 +185,9 @@ export default function VoiceAssessment() {
           </div>
         )}
       </div>
+      
+      {/* Camera component moved outside main content */}
+      <FloatingCamera />
     </div>
   );
 }
