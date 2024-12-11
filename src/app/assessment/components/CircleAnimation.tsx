@@ -25,12 +25,49 @@ interface Particle {
   hue: number;
 }
 
+interface GlowColors {
+  primary: string;
+  secondary: string;
+  accent: string;
+}
+
+function getThemeColors(baseColor: string): GlowColors {
+  // Dark theme color mapping
+  switch (baseColor) {
+    case '#FF453A': // Error state
+      return {
+        primary: '#FF453A',
+        secondary: '#FF6B6B',
+        accent: '#FF8585'
+      };
+    case '#4ADE80': // Success state (not speaking)
+      return {
+        primary: '#4ADE80',
+        secondary: '#6EE7B7',
+        accent: '#34D399'
+      };
+    case '#A855F7': // Speaking state
+      return {
+        primary: '#A855F7',
+        secondary: '#C084FC',
+        accent: '#8B46CC'
+      };
+    default: // Idle state
+      return {
+        primary: '#6B7280',
+        secondary: '#9CA3AF',
+        accent: '#4B5563'
+      };
+  }
+}
+
 export function CircleAnimation({ isActive, color, size, isSpeaking = false }: CircleAnimationProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const radius = size / 2;
   const numParticles = 180;
   const particles = useRef<Particle[]>([]);
   const energyLevelRef = useRef(0);
+  const themeColors = getThemeColors(color);
 
   useEffect(() => {
     particles.current = Array.from({ length: numParticles }, (_, i) => {
@@ -67,7 +104,7 @@ export function CircleAnimation({ isActive, color, size, isSpeaking = false }: C
       ctx.save();
       if (blur > 0) {
         ctx.shadowBlur = blur;
-        ctx.shadowColor = `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
+        ctx.shadowColor = `${themeColors.primary}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
       }
 
       const segments = 180;
@@ -82,13 +119,13 @@ export function CircleAnimation({ isActive, color, size, isSpeaking = false }: C
         else ctx.lineTo(x, y);
       }
       ctx.closePath();
-      ctx.strokeStyle = `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
+      ctx.strokeStyle = `${themeColors.secondary}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
       ctx.lineWidth = width;
       ctx.stroke();
       ctx.restore();
     };
 
-    const drawParticleTrail = (x: number, y: number, size: number, opacity: number, angle: number) => {
+    const drawParticleTrail = (x: number, y: number, size: number, opacity: number, angle: number, color: string) => {
       const trailLength = 5;
       const gradient = ctx.createLinearGradient(
         x - Math.cos(angle) * trailLength,
@@ -112,8 +149,8 @@ export function CircleAnimation({ isActive, color, size, isSpeaking = false }: C
       ctx.clearRect(0, 0, size, size);
 
       const bgGradient = ctx.createRadialGradient(radius, radius, 0, radius, radius, radius);
-      bgGradient.addColorStop(0, `${color}08`);
-      bgGradient.addColorStop(0.4, `${color}04`);
+      bgGradient.addColorStop(0, `${themeColors.primary}15`);
+      bgGradient.addColorStop(0.4, `${themeColors.secondary}08`);
       bgGradient.addColorStop(1, 'transparent');
       ctx.fillStyle = bgGradient;
       ctx.fillRect(0, 0, size, size);
@@ -131,8 +168,15 @@ export function CircleAnimation({ isActive, color, size, isSpeaking = false }: C
 
       for (let i = 0; i < 5; i++) {
         const ringRadius = radius * (0.65 + i * 0.09) * expansionFactor;
-        const ringOpacity = (0.12 - i * 0.02) * (1 + energyLevelRef.current);
-        drawGlowingRing(radius, radius, ringRadius, 1 + (i === 0 ? 1 : 0), ringOpacity, 8 + i * 2);
+        const ringOpacity = (0.15 - i * 0.02) * (1 + energyLevelRef.current);
+        drawGlowingRing(
+          radius, 
+          radius, 
+          ringRadius, 
+          1 + (i === 0 ? 1 : 0), 
+          ringOpacity, 
+          10 + i * 2
+        );
       }
 
       const sortedParticles = [...particles.current].sort((a, b) => a.layer - b.layer);
@@ -156,21 +200,23 @@ export function CircleAnimation({ isActive, color, size, isSpeaking = false }: C
         const pulsingOpacity = baseOpacity * (0.7 + Math.sin(time * 2 + i) * 0.3);
 
         if (isActive && particle.layer === 2) {
+          const particleColor = particle.layer % 2 === 0 ? themeColors.primary : themeColors.accent;
           drawParticleTrail(
             particle.x,
             particle.y,
             particleSize,
-            pulsingOpacity * 0.5,
-            particle.angle
+            pulsingOpacity * 0.6,
+            particle.angle,
+            particleColor
           );
         }
 
         ctx.save();
-        ctx.shadowBlur = particleSize * 2;
-        ctx.shadowColor = `${color}${Math.floor(pulsingOpacity * 100).toString(16).padStart(2, '0')}`;
+        ctx.shadowBlur = particleSize * 3;
+        ctx.shadowColor = `${themeColors.accent}${Math.floor(pulsingOpacity * 120).toString(16).padStart(2, '0')}`;
         ctx.beginPath();
         ctx.arc(particle.x, particle.y, particleSize, 0, Math.PI * 2);
-        ctx.fillStyle = `${color}${Math.floor(pulsingOpacity * 255).toString(16).padStart(2, '0')}`;
+        ctx.fillStyle = `${themeColors.primary}${Math.floor(pulsingOpacity * 255).toString(16).padStart(2, '0')}`;
         ctx.fill();
         ctx.restore();
 
@@ -181,11 +227,14 @@ export function CircleAnimation({ isActive, color, size, isSpeaking = false }: C
             const maxDistance = radius * 0.5;
 
             if (distance < maxDistance) {
-              const lineOpacity = (1 - distance / maxDistance) * 0.3 * (1 + energyLevelRef.current);
-              ctx.beginPath();
-              ctx.moveTo(particle.x, particle.y);
-              ctx.lineTo(nextParticle.x, nextParticle.y);
-              ctx.strokeStyle = `${color}${Math.floor(lineOpacity * 255).toString(16).padStart(2, '0')}`;
+              const lineOpacity = (1 - distance / maxDistance) * 0.4 * (1 + energyLevelRef.current);
+              const gradient = ctx.createLinearGradient(
+                particle.x, particle.y, 
+                nextParticle.x, nextParticle.y
+              );
+              gradient.addColorStop(0, `${themeColors.primary}${Math.floor(lineOpacity * 255).toString(16).padStart(2, '0')}`);
+              gradient.addColorStop(1, `${themeColors.secondary}${Math.floor(lineOpacity * 255).toString(16).padStart(2, '0')}`);
+              ctx.strokeStyle = gradient;
               ctx.lineWidth = (0.5 * (1 + energyLevelRef.current * 0.5)) * (1 - particle.layer * 0.2);
               ctx.stroke();
             }
@@ -218,8 +267,10 @@ export function CircleAnimation({ isActive, color, size, isSpeaking = false }: C
           else ctx.lineTo(x, y);
         }
         ctx.closePath();
-        ctx.strokeStyle = `${color}${Math.floor((0.3 - i * 0.05) * 255).toString(16).padStart(2, '0')}`;
-        ctx.lineWidth = 1;
+        
+        const patternColor = i % 2 === 0 ? themeColors.primary : themeColors.secondary;
+        ctx.strokeStyle = `${patternColor}${Math.floor((0.4 - i * 0.05) * 255).toString(16).padStart(2, '0')}`;
+        ctx.lineWidth = 1.5;
         ctx.stroke();
         
         ctx.restore();
@@ -235,7 +286,7 @@ export function CircleAnimation({ isActive, color, size, isSpeaking = false }: C
     return () => {
       cancelAnimationFrame(animationFrame);
     };
-  }, [isActive, isSpeaking, color, size, radius]);
+  }, [isActive, isSpeaking, color, size, radius, themeColors]);
 
   return (
     <motion.canvas

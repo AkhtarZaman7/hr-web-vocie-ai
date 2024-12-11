@@ -4,7 +4,7 @@ export default function AssessmentLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-950">
+    <div className="min-h-screen bg-gradient-to-b from-[#1C1C1E] to-[#000000] text-white">
       {children}
     </div>
   );
