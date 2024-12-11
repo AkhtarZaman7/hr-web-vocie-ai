@@ -31,7 +31,6 @@ export function CircleAnimation({ isActive, color, size, isSpeaking = false }: C
   const numParticles = 180;
   const particles = useRef<Particle[]>([]);
   const energyLevelRef = useRef(0);
-  const baseColorRef = useRef(color);
 
   useEffect(() => {
     particles.current = Array.from({ length: numParticles }, (_, i) => {
@@ -63,9 +62,6 @@ export function CircleAnimation({ isActive, color, size, isSpeaking = false }: C
     let animationFrame: number;
     let time = 0;
 
-    const adjustColor = (baseColor: string, hue: number, energy: number): string => {
-      return baseColor;
-    };
 
     const drawGlowingRing = (centerX: number, centerY: number, radius: number, width: number, opacity: number, blur = 0) => {
       ctx.save();
@@ -198,7 +194,7 @@ export function CircleAnimation({ isActive, color, size, isSpeaking = false }: C
       });
 
       const coreSize = radius * 0.15 * (1 + energyLevelRef.current * 0.3);
-      const corePulse = Math.sin(time * 3) * 3 * (1 + energyLevelRef.current);
+    //   const corePulse = Math.sin(time * 3) * 3 * (1 + energyLevelRef.current);
 
       ctx.save();
       ctx.translate(radius, radius);
