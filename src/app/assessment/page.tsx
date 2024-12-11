@@ -147,7 +147,7 @@ export default function VoiceAssessment() {
         </div>
 
         {/* Dev Controls */}
-        {process.env.NODE_ENV === 'development' && (
+        {true&& (
           <div className="space-y-3 backdrop-blur-sm bg-gray-800/50 p-4 rounded-xl border border-gray-700 mx-2 mt-auto">
             <p className="text-xs text-gray-400 font-medium mb-2">Dev Controls</p>
             <div className="grid grid-cols-2 gap-2">
