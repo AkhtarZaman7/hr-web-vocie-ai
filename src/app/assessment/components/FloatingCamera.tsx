@@ -55,10 +55,28 @@ export function FloatingCamera() {
     checkCamera();
   }, []);
 
+  // Cleanup function to stop camera and reset state
+  const cleanup = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => {
+        track.stop();
+      });
+      setStream(null);
+    }
+    setState(prev => ({
+      ...prev,
+      isEnabled: false,
+      hasPermission: false,
+    }));
+  };
+
   // Handle camera setup
   useEffect(() => {
     async function setupCamera() {
-      if (!state.isEnabled || !state.isCameraAvailable) return;
+      if (!state.isEnabled || !state.isCameraAvailable) {
+        cleanup(); // Cleanup if camera is disabled
+        return;
+      }
 
       try {
         const mediaStream = await navigator.mediaDevices.getUserMedia({ 
@@ -94,21 +112,16 @@ export function FloatingCamera() {
 
     setupCamera();
 
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-    };
+    // Cleanup on unmount or when camera is disabled
+    return cleanup;
   }, [state.isEnabled, state.isCameraAvailable]);
 
+  // Cleanup on component unmount
+  useEffect(() => {
+    return cleanup;
+  }, []);
+
   const toggleCamera = () => {
-    if (state.isEnabled) {
-      // Stop camera
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        setStream(null);
-      }
-    }
     setState(prev => ({ ...prev, isEnabled: !prev.isEnabled }));
   };
 
@@ -119,8 +132,9 @@ export function FloatingCamera() {
   };
 
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       <motion.div
+        key="camera-container"
         ref={containerRef}
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ 
